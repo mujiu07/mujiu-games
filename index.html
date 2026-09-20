@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>visitor@game.mujiu.net</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #0d1117;
+            color: #ffffff;
+            font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            line-height: 1.6;
+        }
+        .terminal {
+            max-width: 720px;
+            margin: 0 auto;
+            white-space: pre;
+        }
+        .input-line {
+            display: flex;
+        }
+        #input {
+            flex:1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            caret-color: #ffffff;
+            font-family: inherit;
+            font-size: inherit;
+        }
+        .game-item-link {
+            color: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .game-item-link:hover {
+            background-color: #222;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal" id="term"></div>
+    <div class="terminal input-line">
+        <span>visitor@game.mujiu.net:~ $ </span>
+        <input id="input" autofocus autocomplete="off">
+    </div>
+
+<script>
+    // 游戏列表配置
+    const games = [
+        {name:"snake", label:"贪吃蛇", url:"/snake/"},
+        {name:"tetris", label:"俄罗斯方块", url:"/tetris/"},
+        {name:"2048", label:"2048", url:"/2048/"},
+        {name:"flappy", label:"Flappy Bird", url:"/flappy/"},
+        {name:"minesweeper", label:"扫雷", url:"/minesweeper/"},
+        {name:"breakout", label:"打砖块", url:"/breakout/"},
+        {name:"gobang", label:"五子棋", url:"/gobang/"},
+        {name:"tictactoe", label:"井字棋", url:"/tictactoe/"}
+    ]
+    // 全部可tab补全的指令（内置命令+游戏名）
+    const builtinCmds = ["ls", "clear"];
+    const gameNames = games.map(g=>g.name);
+    const allCmds = [...builtinCmds, ...gameNames];
+
+    const $term = document.getElementById('term');
+    const $input = document.getElementById('input');
+    let history = [];
+    let historyIdx = -1;
+    const promptPrefix = "visitor@game.mujiu.net:~ $ ";
+
+    // 打印文本，支持传入可点击html
+    function print(html){
+        $term.innerHTML += html + "\n";
+    }
+    // 渲染ls游戏列表（样式和普通文字完全一致，hover暗底提示）
+    function renderGameList() {
+        games.forEach(g=>{
+            const line = `> <a class="game-item-link" href="${g.url}">${g.name.padEnd(12)}</a> ${g.label}`
+            print(line);
+        })
+        print("");
+    }
+    // 初始化自动ls
+    print(`${promptPrefix}ls games/`);
+    renderGameList();
+
+    // 执行命令
+    function runCmd(raw){
+        const cmd = raw.trim();
+        if(!cmd) return;
+        history.push(cmd);
+        historyIdx = history.length;
+        print(`${promptPrefix}${cmd}`);
+
+        if(cmd === "ls" || cmd === "ls games"){
+            renderGameList();
+        }else if(cmd === "clear"){
+            $term.innerHTML = "";
+        }else if(gameNames.includes(cmd)){
+            const target = games.find(g=>g.name===cmd);
+            print(`opening ${cmd} ...`);
+            window.location.href = target.url;
+        }else{
+            print(`command not found: ${cmd}`);
+            print("");
+        }
+    }
+
+    // Tab自动补全（同时支持ls/clear和游戏名）
+    function complete(word){
+        const match = allCmds.filter(n=>n.startsWith(word));
+        if(match.length === 1){
+            return match[0];
+        }else if(match.length>1){
+            print(match.join("  "));
+            print("");
+        }
+        return word;
+    }
+
+    // 键盘监听
+    $input.addEventListener("keydown", e=>{
+        if(e.key === "Enter"){
+            runCmd($input.value);
+            $input.value = "";
+        }else if(e.key === "Tab"){
+            e.preventDefault();
+            $input.value = complete($input.value.trim());
+        }else if(e.key === "ArrowUp"){
+            e.preventDefault();
+            if(historyIdx>0) $input.value = history[--historyIdx];
+        }else if(e.key === "ArrowDown"){
+            e.preventDefault();
+            if(historyIdx<history.length-1) $input.value = history[++historyIdx];
+            else {historyIdx=history.length; $input.value="";}
+        }
+    })
+    // 自动聚焦输入框
+    document.body.addEventListener("click",()=>$input.focus())
+</script>
+</body>
+</html>

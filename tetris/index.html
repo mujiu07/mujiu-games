@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>tetris | visitor@game.mujiu.net</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#0d1117;
+  color:#fff;
+  font-family:"JetBrains Mono",Menlo,Consolas,monospace;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:1rem;
+}
+#game{
+  border:1px solid #444;
+  background:#111;
+  max-width:100%;
+}
+.info{
+  margin-bottom:0.5rem;
+  text-align:center;
+}
+.difficulty{
+  margin-bottom:0.5rem;
+}
+.difficulty select{
+  background:#1a1a1a;
+  color:#fff;
+  border:1px solid #555;
+  padding:4px;
+}
+.rank-area{
+  margin:0.5rem 0;
+  font-size:14px;
+}
+.rank-area input{
+  background:#1a1a1a;
+  color:#fff;
+  border:1px solid #555;
+  padding:3px;
+  width:100px;
+}
+.rank-area button{
+  background:#1a1a1a;
+  color:#fff;
+  border:1px solid #555;
+  padding:3px 6px;
+  cursor:pointer;
+}
+.ctrl{
+  margin-top:1rem;
+  display:grid;
+  grid-template-columns: repeat(3,60px);
+  gap:6px;
+}
+.ctrl button{
+  width:60px;height:60px;
+  border:1px solid #555;
+  background:#1a1a1a;
+  color:#fff;
+  font-size:18px;
+  border-radius:4px;
+}
+.back{
+  margin-top:1rem;
+  color:#888;
+}
+.back a{color:#fff;text-decoration:none}
+.back a:hover{background:#222}
+</style>
+</head>
+<body>
+<div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span></div>
+<div class="difficulty">难度：
+    <select id="diff">
+        <option value="1000">简单(初始)</option>
+        <option value="600">普通</option>
+        <option value="300">困难</option>
+    </select>
+</div>
+<div class="rank-area">
+    你的数字ID：<input type="text" id="uid" placeholder="纯数字" maxlength="12">
+    <button id="submitScore" disabled>提交分数上榜</button>
+    <button id="showRank" disabled>查看排行榜</button>
+</div>
+<canvas id="game"></canvas>
+<div class="ctrl">
+<div></div>
+<button data-op="rotate">↻</button>
+<div></div>
+<button data-op="left">←</button>
+<button data-op="down">↓</button>
+<button data-op="right">→</button>
+<div></div>
+<button data-op="fastDrop">⏷</button>
+<div></div>
+</div>
+<div class="back"><a href="/">← back to terminal</a></div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const localBestEl = document.getElementById('localBest');
+const diffSelect = document.getElementById('diff');
+const uidInput = document.getElementById('uid');
+const submitBtn = document.getElementById('submitScore');
+const rankBtn = document.getElementById('showRank');
+
+const COLS = 10;
+const ROWS = 20;
+const BLOCK_SIZE = Math.min(24, Math.floor((window.innerWidth - 32) / COLS));
+canvas.width = BLOCK_SIZE * COLS;
+canvas.height = BLOCK_SIZE * ROWS;
+
+// 方块形状
+const SHAPES = [
+  [[1,1,1,1]],
+  [[1,1],[1,1]],
+  [[0,1,0],[1,1,1]],
+  [[1,0,0],[1,1,1]],
+  [[0,0,1],[1,1,1]],
+  [[1,1,0],[0,1,1]],
+  [[0,1,1],[1,1,0]]
+];
+const COLORS = ['#0ff','#ff0','#00f','#ffa500','#f0f','#0f0','#f44'];
+
+let board = Array.from({length:ROWS},()=>Array(COLS).fill(0));
+let currentShape, currentX, currentY, currentColor;
+let score = 0;
+let loop;
+let gameOverFlag = false;
+
+const STORAGE_KEY = "tetris_best";
+let localBest = Number(localStorage.getItem(STORAGE_KEY)) || 0;
+localBestEl.textContent = localBest;
+if(localStorage.getItem("game_uid")) uidInput.value = localStorage.getItem("game_uid");
+
+// 消行计分（带连消额外奖励，比赛通用分值）
+function getClearScore(lineCount) {
+  const scoreMap = {
+    1: 100,
+    2: 300,
+    3: 600,
+    4: 1000
+  }
+  return scoreMap[lineCount] || 0;
+}
+
+function newShape(){
+  const idx = Math.floor(Math.random()*SHAPES.length);
+  currentShape = SHAPES[idx];
+  currentColor = COLORS[idx];
+  currentX = Math.floor((COLS - currentShape[0].length)/2);
+  currentY = 0;
+  if(checkCollision(currentX, currentY, currentShape)){
+    gameOverFlag = true;
+    clearInterval(loop);
+    if(score > localBest){
+      localBest = score;
+      localStorage.setItem(STORAGE_KEY, localBest);
+      localBestEl.textContent = localBest;
+    }
+    alert("game over! refresh to restart");
+  }
+}
+function checkCollision(x,y,shape){
+  for(let row=0;row<shape.length;row++){
+    for(let col=0;col<shape[row].length;col++){
+      if(shape[row][col]){
+        const nx = x+col;
+        const ny = y+row;
+        if(nx<0||nx>=COLS||ny>=ROWS||(ny>=0&&board[ny][nx])) return true;
+      }
+    }
+  }
+  return false;
+}
+function rotate(shape){
+  const rows = shape.length;
+  const cols = shape[0].length;
+  let res = Array.from({length:cols},()=>Array(rows).fill(0));
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) res[c][rows-1-r]=shape[r][c];
+  return res;
+}
+function lock(){
+  for(let r=0;r<currentShape.length;r++){
+    for(let c=0;c<currentShape[r].length;c++){
+      if(currentShape[r][c]) board[currentY+r][currentX+c] = currentColor;
+    }
+  }
+  let clearLines = 0;
+  for(let r=ROWS-1;r>=0;r--){
+    if(board[r].every(v=>v!==0)){
+      board.splice(r,1);
+      board.unshift(Array(COLS).fill(0));
+      clearLines++;
+      r++;
+    }
+  }
+  if(clearLines>0){
+    const addScore = getClearScore(clearLines);
+    score += addScore;
+    scoreEl.textContent = score;
+    // ✅ 实时更新最高分，中途退出也能保存
+    if(score > localBest){
+      localBest = score;
+      localStorage.setItem(STORAGE_KEY, localBest);
+      localBestEl.textContent = localBest;
+    }
+  }
+  newShape();
+}
+function draw(){
+  ctx.fillStyle="#111";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      if(board[r][c]){
+        ctx.fillStyle=board[r][c];
+        ctx.fillRect(c*BLOCK_SIZE, r*BLOCK_SIZE, BLOCK_SIZE-1, BLOCK_SIZE-1);
+      }
+    }
+  }
+  ctx.fillStyle=currentColor;
+  for(let r=0;r<currentShape.length;r++){
+    for(let c=0;c<currentShape[r].length;c++){
+      if(currentShape[r][c]) ctx.fillRect((currentX+c)*BLOCK_SIZE,(currentY+r)*BLOCK_SIZE,BLOCK_SIZE-1,BLOCK_SIZE-1);
+    }
+  }
+}
+function update(){
+  if(!checkCollision(currentX, currentY+1, currentShape)) currentY++;
+  else lock();
+  draw();
+}
+function restartGame(){
+  clearInterval(loop);
+  board = Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  score = 0;
+  scoreEl.textContent=0;
+  gameOverFlag = false;
+  newShape();
+  draw();
+  loop = setInterval(update, Number(diffSelect.value));
+}
+restartGame();
+diffSelect.onchange = restartGame;
+
+document.addEventListener('keydown',e=>{
+  if(gameOverFlag) return;
+  if(e.key==="ArrowLeft"&&!checkCollision(currentX-1,currentY,currentShape)) currentX--;
+  if(e.key==="ArrowRight"&&!checkCollision(currentX+1,currentY,currentShape)) currentX++;
+  if(e.key==="ArrowDown"&&!checkCollision(currentX,currentY+1,currentShape)) currentY++;
+  if(e.key==="ArrowUp"){
+    const rotated = rotate(currentShape);
+    if(!checkCollision(currentX,currentY,rotated)) currentShape = rotated;
+  }
+  if(e.key===" "){
+    while(!checkCollision(currentX,currentY+1,currentShape)) currentY++;
+    lock();
+  }
+  draw();
+})
+document.querySelectorAll('[data-op]').forEach(btn=>{
+  btn.onclick=()=>{
+    if(gameOverFlag) return;
+    const op = btn.dataset.op;
+    if(op==="left"&&!checkCollision(currentX-1,currentY,currentShape)) currentX--;
+    if(op==="right"&&!checkCollision(currentX+1,currentY,currentShape)) currentX++;
+    if(op==="down"&&!checkCollision(currentX,currentY+1,currentShape)) currentY++;
+    if(op==="rotate"){
+      const rotated = rotate(currentShape);
+      if(!checkCollision(currentX,currentY,rotated)) currentShape = rotated;
+    }
+    if(op==="fastDrop"){
+      while(!checkCollision(currentX,currentY+1,currentShape)) currentY++;
+      lock();
+    }
+    draw();
+  }
+})
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>2048 | visitor@game.mujiu.net</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
+.info{margin-bottom:.5rem;text-align:center}
+.difficulty{margin-bottom:.5rem}
+.difficulty select{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
+.rank-area{margin:.5rem 0;font-size:14px}
+.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
+.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
+#board{display:grid;gap:8px;background:#1a1a1a;border:1px solid #444;padding:8px;margin:0 auto}
+.cell{width:72px;height:72px;background:#222;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:bold}
+.ctrl{margin-top:1rem;display:grid;grid-template-columns:repeat(3,60px);gap:6px}
+.ctrl button{width:60px;height:60px;border:1px solid #555;background:#1a1a1a;color:#fff;font-size:20px;border-radius:4px;cursor:pointer}
+.back{margin-top:1rem;color:#888}
+.back a{color:#fff;text-decoration:none}
+.back a:hover{background:#222}
+@media (max-width:420px){.cell{width:min(70px,calc((100vw - 76px)/4));height:min(70px,calc((100vw - 76px)/4));font-size:20px}}
+</style>
+</head>
+<body>
+<div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span></div>
+<div class="difficulty">难度：
+    <select id="diff">
+        <option value="1">简单(初始)</option>
+        <option value="2">普通</option>
+        <option value="3">困难</option>
+    </select>
+</div>
+<div class="rank-area">
+    你的数字ID：<input type="text" id="uid" placeholder="纯数字" maxlength="12">
+    <button id="submitScore" disabled>提交分数</button>
+    <button id="showRank" disabled>排行榜</button>
+</div>
+<div id="board"></div>
+<div class="ctrl">
+<div></div><button data-dir="up">↑</button><div></div>
+<button data-dir="left">←</button><div></div><button data-dir="right">→</button>
+<div></div><button data-dir="down">↓</button><div></div>
+</div>
+<div class="back"><a href="/">← back to terminal</a></div>
+<script>
+const scoreEl=document.getElementById('score'), bestEl=document.getElementById('localBest');
+const diffSel=document.getElementById('diff'), boardEl=document.getElementById('board');
+const uidInput=document.getElementById('uid');
+const KEY='2048_best';
+let best=Number(localStorage.getItem(KEY))||0; bestEl.textContent=best;
+if(localStorage.getItem('game_uid')) uidInput.value=localStorage.getItem('game_uid');
+let grid=[],score=0,size=4,fourChance=0.1,gameOver=false;
+
+function cfg(v){
+  if(v==='1'){size=4;fourChance=0.10;}
+  else if(v==='2'){size=4;fourChance=0.25;}
+  else{size=5;fourChance=0.25;}
+}
+function newCell(){return 0;}
+function build(){
+  grid=Array.from({length:size},()=>Array(size).fill(0));
+  boardEl.style.gridTemplateColumns=`repeat(${size},auto)`;
+  boardEl.innerHTML='';
+  for(let i=0;i<size*size;i++){const d=document.createElement('div');d.className='cell';boardEl.appendChild(d);}
+}
+function cellColor(v){
+  if(v===0)return '#222';
+  const m={'2':'#2d2d2d','4':'#3a3a3a','8':'#4a3a2a','16':'#5a3a1a','32':'#6a2a1a','64':'#8a2a1a','128':'#a33','256':'#c33','512':'#e33','1024':'#f55','2048':'#ff7'};
+  return m[v]||'#ffd700';
+}
+function render(){
+  for(let i=0;i<size;i++)for(let j=0;j<size;j++){
+    const d=boardEl.children[i*size+j];
+    d.textContent=grid[i][j]||'';
+    d.style.background=cellColor(grid[i][j]);
+  }
+}
+function spawn(){
+  const empty=[];
+  for(let i=0;i<size;i++)for(let j=0;j<size;j++)if(!grid[i][j])empty.push([i,j]);
+  if(!empty.length)return false;
+  const p=empty[Math.floor(Math.random()*empty.length)];
+  grid[p[0]][p[1]]=Math.random()<fourChance?4:2;
+  return true;
+}
+function slide(row){
+  const arr=row.filter(v=>v);
+  for(let i=0;i<arr.length-1;i++){
+    if(arr[i]===arr[i+1]){arr[i]*=2;arr.splice(i+1,1);score+=arr[i];scoreEl.textContent=score;if(score>best){best=score;localStorage.setItem(KEY,best);bestEl.textContent=best;}}
+  }
+  while(arr.length<size)arr.push(0);
+  return arr;
+}
+function move(dir){
+  let moved=false;
+  const before=JSON.stringify(grid);
+  for(let k=0;k<size;k++){
+    let row=[];
+    for(let i=0;i<size;i++){
+      const v = dir==='left'?grid[k][i]:dir==='right'?grid[k][size-1-i]:dir==='up'?grid[i][k]:grid[size-1-i][k];
+      row.push(v);
+    }
+    row=slide(row);
+    for(let i=0;i<size;i++){
+      const v=row[i];
+      if(dir==='left')grid[k][i]=v;else if(dir==='right')grid[k][size-1-i]=v;else if(dir==='up')grid[i][k]=v;else grid[size-1-i][k]=v;
+    }
+  }
+  if(JSON.stringify(grid)!==before)moved=true;
+  return moved;
+}
+function canMove(){
+  for(let i=0;i<size;i++)for(let j=0;j<size;j++){
+    if(!grid[i][j])return true;
+    if(j+1<size&&grid[i][j]===grid[i][j+1])return true;
+    if(i+1<size&&grid[i][j]===grid[i+1][j])return true;
+  }
+  return false;
+}
+function restart(){
+  cfg(diffSel.value);score=0;scoreEl.textContent=0;gameOver=false;build();
+  spawn();spawn();render();
+}
+function act(dir){
+  if(gameOver)return;
+  if(move(dir)){spawn();render();if(!canMove()){gameOver=true;alert('game over! refresh to restart');}}
+  else render();
+}
+restart();
+diffSel.onchange=restart;
+document.querySelectorAll('[data-dir]').forEach(b=>b.onclick=()=>act(b.dataset.dir));
+document.addEventListener('keydown',e=>{
+  const m={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};
+  if(m[e.key]){e.preventDefault();act(m[e.key]);}
+});
+let tsx=0,tsy=0;
+document.addEventListener('touchstart',e=>{const t=e.touches[0];tsx=t.clientX;tsy=t.clientY;},{passive:true});
+document.addEventListener('touchend',e=>{
+  const t=e.changedTouches[0];
+  const dx=t.clientX-tsx, dy=t.clientY-tsy;
+  if(Math.abs(dx)<24&&Math.abs(dy)<24)return;
+  act(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'));
+},{passive:true});
+</script>
+</body>
+</html>

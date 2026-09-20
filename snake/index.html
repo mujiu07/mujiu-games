@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>snake | visitor@game.mujiu.net</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#0d1117;
+  color:#fff;
+  font-family:"JetBrains Mono",Menlo,Consolas,monospace;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:1rem;
+}
+#game{
+  border:1px solid #444;
+  background:#111;
+  max-width:100%;
+}
+.info{
+  margin-bottom:0.5rem;
+  text-align:center;
+}
+.difficulty{
+  margin-bottom:0.5rem;
+}
+.difficulty select{
+  background:#1a1a1a;
+  color:#fff;
+  border:1px solid #555;
+  padding:4px;
+}
+.rank-area{
+  margin:0.5rem 0;
+  font-size:14px;
+}
+.rank-area input{
+  background:#1a1a1a;
+  color:#fff;
+  border:1px solid #555;
+  padding:3px;
+  width:100px;
+}
+.rank-area button{
+  background:#1a1a1a;
+  color:#fff;
+  border:1px solid #555;
+  padding:3px 6px;
+  cursor:pointer;
+}
+.ctrl{
+  margin-top:1rem;
+  display:grid;
+  grid-template-columns: repeat(3,60px);
+  gap:6px;
+}
+.ctrl button{
+  width:60px;height:60px;
+  border:1px solid #555;
+  background:#1a1a1a;
+  color:#fff;
+  font-size:20px;
+  border-radius:4px;
+}
+.back{
+  margin-top:1rem;
+  color:#888;
+}
+.back a{color:#fff;text-decoration:none}
+.back a:hover{background:#222}
+</style>
+</head>
+<body>
+<div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span></div>
+<div class="difficulty">难度：
+    <select id="diff">
+        <option value="180">简单(初始)</option>
+        <option value="120">普通</option>
+        <option value="70">困难</option>
+    </select>
+</div>
+<div class="rank-area">
+    你的数字ID：<input type="text" id="uid" placeholder="纯数字" maxlength="12">
+    <button id="submitScore">提交分数上榜</button>
+    <button id="showRank">查看排行榜</button>
+</div>
+<canvas id="game"></canvas>
+<div class="ctrl">
+<div></div>
+<button data-dir="up">↑</button>
+<div></div>
+<button data-dir="left">←</button>
+<div></div>
+<button data-dir="right">→</button>
+<div></div>
+<button data-dir="down">↓</button>
+<div></div>
+</div>
+<div class="back"><a href="/">← back to terminal</a></div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const localBestEl = document.getElementById('localBest');
+const diffSelect = document.getElementById('diff');
+const uidInput = document.getElementById('uid');
+const submitBtn = document.getElementById('submitScore');
+const rankBtn = document.getElementById('showRank');
+
+const size = 20;
+const w = Math.min(400, window.innerWidth - 32);
+const h = w;
+canvas.width = w;
+canvas.height = h;
+const countX = Math.floor(w / size);
+const countY = Math.floor(h / size);
+
+let snake = [{x:6,y:6}];
+let dx=1, dy=0;
+let food = {};
+let score=0;
+let loop;
+let gameOverFlag = false;
+
+// 本地最高分读取
+const STORAGE_KEY = "snake_best";
+let localBest = Number(localStorage.getItem(STORAGE_KEY)) || 0;
+localBestEl.textContent = localBest;
+// 读取本地保存的用户数字ID
+if(localStorage.getItem("game_uid")) uidInput.value = localStorage.getItem("game_uid");
+
+function rand(){
+  return {
+    x:Math.floor(Math.random()*countX),
+    y:Math.floor(Math.random()*countY)
+  }
+}
+food = rand();
+
+function draw(){
+  ctx.fillStyle="#111";
+  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#4f4";
+  snake.forEach(p=>ctx.fillRect(p.x*size,p.y*size,size-1,size-1));
+  ctx.fillStyle="#f44";
+  ctx.fillRect(food.x*size,food.y*size,size-1,size-1);
+}
+function update(){
+  const head = {...snake[0]};
+  head.x += dx;
+  head.y += dy;
+  if(head.x<0||head.y<0||head.x>=countX||head.y>=countY||snake.some(p=>p.x===head.x&&p.y===head.y)){
+    clearInterval(loop);
+    gameOverFlag = true;
+    // 更新本地最高分
+    if(score > localBest){
+        localBest = score;
+        localStorage.setItem(STORAGE_KEY, localBest);
+        localBestEl.textContent = localBest;
+    }
+    alert("game over! refresh to restart");
+    return;
+  }
+  snake.unshift(head);
+  if(head.x===food.x&&head.y===food.y){
+    score+=10;
+    scoreEl.textContent=score;
+    food=rand();
+  }else{
+    snake.pop();
+  }
+  draw();
+}
+// 重启游戏循环
+function restartGame() {
+    clearInterval(loop);
+    snake = [{x:6,y:6}];
+    dx=1; dy=0;
+    score=0;
+    scoreEl.textContent=0;
+    gameOverFlag = false;
+    food=rand();
+    loop = setInterval(update, Number(diffSelect.value));
+}
+restartGame();
+diffSelect.onchange = restartGame;
+
+// 提交分数（后端接口占位，后续补真实接口）
+submitBtn.onclick = async ()=>{
+    const uid = uidInput.value.trim();
+    if(!/^\d+$/.test(uid)){
+        alert("ID只能是纯数字！");
+        return;
+    }
+    localStorage.setItem("game_uid", uid);
+    if(!gameOverFlag){
+        alert("需要结束本局游戏后才能提交分数");
+        return;
+    }
+    // 这里替换成你的后端api地址
+    const apiUrl = "/api/snake/rank";
+    try{
+        const res = await fetch(apiUrl,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({uid, score})
+        })
+        const data = await res.json();
+        alert(data.msg || "分数提交成功");
+    }catch(e){
+        alert("云端提交暂未上线，分数已保存在本地");
+    }
+}
+// 查看排行榜（接口占位）
+rankBtn.onclick = async ()=>{
+    const apiUrl = "/api/snake/list";
+    try{
+        const res = await fetch(apiUrl);
+        const list = await res.json();
+        let text = "=== 贪吃蛇排行榜 ===\n";
+        list.forEach((item,i)=>{
+            text += `${i+1}. ID:${item.uid} | ${item.score}分\n`
+        })
+        alert(text);
+    }catch(e){
+        alert("排行榜接口暂未部署");
+    }
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==="ArrowUp"&&dy!==1){dx=0;dy=-1}
+  if(e.key==="ArrowDown"&&dy!==-1){dx=0;dy=1}
+  if(e.key==="ArrowLeft"&&dx!==1){dx=-1;dy=0}
+  if(e.key==="ArrowRight"&&dx!==-1){dx=1;dy=0}
+})
+document.querySelectorAll('[data-dir]').forEach(btn=>{
+  btn.onclick=()=>{
+    const d=btn.dataset.dir;
+    if(d==="up"&&dy!==1){dx=0;dy=-1}
+    if(d==="down"&&dy!==-1){dx=0;dy=1}
+    if(d==="left"&&dx!==1){dx=-1;dy=0}
+    if(d==="right"&&dx!==-1){dx=1;dy=0}
+  }
+})
+</script>
+</body>
+</html>

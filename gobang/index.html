@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>gobang | visitor@game.mujiu.net</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;touch-action:manipulation}
+#game{border:1px solid #444;background:#181a1c;max-width:100%;cursor:pointer;touch-action:none}
+.info{margin-bottom:.5rem;text-align:center}
+.difficulty{margin-bottom:.5rem}
+.difficulty select{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
+.rank-area{margin:.5rem 0;font-size:14px}
+.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
+.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
+.status{margin-bottom:.5rem;color:#aaa;font-size:14px}
+.newbtn{margin-bottom:.5rem}
+.newbtn button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px 12px;cursor:pointer}
+.back{margin-top:1rem;color:#888}
+.back a{color:#fff;text-decoration:none}
+.back a:hover{background:#222}
+</style>
+</head>
+<body>
+<div class="info">赢局数: <span id="score">0</span> | 连胜: <span id="streak">0</span> | 纪录: <span id="localBest">0</span></div>
+<div class="difficulty">难度：
+    <select id="diff">
+        <option value="1">简单(初始)</option>
+        <option value="2">普通</option>
+        <option value="3">困难</option>
+        <option value="4">大师</option>
+    </select>
+</div>
+<div class="rank-area">
+    你的数字ID：<input type="text" id="uid" placeholder="纯数字" maxlength="12">
+    <button id="submitScore" disabled>提交分数</button>
+    <button id="showRank" disabled>排行榜</button>
+</div>
+<div class="status" id="status">你执黑先手，点击棋盘落子</div>
+<div class="newbtn"><button id="newGame">重新开局</button></div>
+<canvas id="game"></canvas>
+<div class="back"><a href="/">← back to terminal</a></div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('localBest');
+const streakEl=document.getElementById('streak');
+const diffSel=document.getElementById('diff'),uidInput=document.getElementById('uid');
+const statusEl=document.getElementById('status');
+const KEY='gobang_streak';   // ✅ 现在纪录的是最高连胜
+let best=Number(localStorage.getItem(KEY))||0;bestEl.textContent=best;
+if(localStorage.getItem('game_uid'))uidInput.value=localStorage.getItem('game_uid');
+const N=15;
+const SIZE=Math.min(480,window.innerWidth-24);
+const M=30,CELL=(SIZE-2*M)/(N-1);
+canvas.width=SIZE;canvas.height=SIZE;
+let board,turn,gameOver;
+let wins=0,streak=0;         // ✅ 赢局数 + 当前连胜
+function reset(){
+  board=Array.from({length:N},()=>Array(N).fill(0));
+  turn=1;gameOver=false;
+  statusEl.textContent='你执黑先手，点击棋盘落子';
+  draw();
+}
+function recordWin(){
+  wins++;streak++;
+  scoreEl.textContent=wins;streakEl.textContent=streak;
+  if(streak>best){best=streak;localStorage.setItem(KEY,best);bestEl.textContent=best;}
+}
+function recordLose(){streak=0;streakEl.textContent=0;}
+function draw(){
+  ctx.fillStyle='#181a1c';ctx.fillRect(0,0,SIZE,SIZE);
+  ctx.strokeStyle='#555';ctx.lineWidth=1;
+  for(let i=0;i<N;i++){
+    ctx.beginPath();ctx.moveTo(M+i*CELL,M);ctx.lineTo(M+i*CELL,SIZE-M);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(M,M+i*CELL);ctx.lineTo(SIZE-M,M+i*CELL);ctx.stroke();
+  }
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+    if(board[i][j]===1){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(M+j*CELL,M+i*CELL,CELL*0.38,0,Math.PI*2);ctx.fill();}
+    if(board[i][j]===2){ctx.fillStyle='#333';ctx.beginPath();ctx.arc(M+j*CELL,M+i*CELL,CELL*0.38,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();}
+  }
+}
+function inB(x,y){return x>=0&&x<N&&y>=0&&y<N;}
+function checkWin(r,c,p){
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+  for(const [dx,dy] of dirs){
+    let cnt=1;
+    for(let i=1;i<5;i++){const nr=r+dx*i,nc=c+dy*i;if(!inB(nr,nc)||board[nr][nc]!==p)break;cnt++;}
+    for(let i=1;i<5;i++){const nr=r-dx*i,nc=c-dy*i;if(!inB(nr,nc)||board[nr][nc]!==p)break;cnt++;}
+    if(cnt>=5)return true;
+  }
+  return false;
+}
+function lineScore(n){if(n>=5)return 100000;if(n===4)return 10000;if(n===3)return 800;if(n===2)return 100;return 10;}
+function countScore(r,c,p){
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+  let total=0;
+  for(const [dx,dy] of dirs){
+    let cnt=1;
+    for(let i=1;i<5;i++){const nr=r+dx*i,nc=c+dy*i;if(!inB(nr,nc)||board[nr][nc]!==p)break;cnt++;}
+    for(let i=1;i<5;i++){const nr=r-dx*i,nc=c-dy*i;if(!inB(nr,nc)||board[nr][nc]!==p)break;cnt++;}
+    total+=lineScore(cnt);
+  }
+  return total;
+}
+function shapeScore(cnt,open){
+  if(cnt>=5)return 1000000;
+  if(open===2){
+    if(cnt===4)return 500000;
+    if(cnt===3)return 50000;
+    if(cnt===2)return 2000;
+    return 200;
+  }
+  if(open===1){
+    if(cnt===4)return 30000;
+    if(cnt===3)return 3000;
+    if(cnt===2)return 300;
+    return 30;
+  }
+  return 0;
+}
+function patternScore(r,c,p){
+  const dirs=[[1,0],[0,1],[1,1],[1,-1]];
+  let total=0;
+  for(const [dx,dy] of dirs){
+    let cnt=1,openEnds=0;
+    let i=1;while(inB(r+dx*i,c+dy*i)&&board[r+dx*i][c+dy*i]===p)i++;
+    if(inB(r+dx*i,c+dy*i)&&board[r+dx*i][c+dy*i]===0)openEnds++;
+    cnt+=i-1;
+    i=1;while(inB(r-dx*i,c-dy*i)&&board[r-dx*i][c-dy*i]===p)i++;
+    if(inB(r-dx*i,c-dy*i)&&board[r-dx*i][c-dy*i]===0)openEnds++;
+    cnt+=i-1;
+    total+=shapeScore(cnt,openEnds);
+  }
+  return total;
+}
+function aiMove(){
+  let bestScore=-1,bestR=-1,bestC=-1;
+  const diff=diffSel.value;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(board[r][c]!==0)continue;
+    let s;
+    if(diff==='1'){s=Math.random()*1000;}
+    else if(diff==='2'){s=Math.max(countScore(r,c,2),countScore(r,c,1));}
+    else if(diff==='3'){s=countScore(r,c,2)*1.15+countScore(r,c,1);}
+    else{s=patternScore(r,c,2)+patternScore(r,c,1)*1.05;}
+    if(s>bestScore){bestScore=s;bestR=r;bestC=c;}
+  }
+  return [bestR,bestC];
+}
+function doMove(r,c,p){
+  board[r][c]=p;
+  draw();
+  if(checkWin(r,c,p)){
+    gameOver=true;
+    if(p===1){recordWin();statusEl.textContent='你赢了！点击重新开局';}
+    else{recordLose();statusEl.textContent='AI 赢了！点击重新开局';}
+    return;
+  }
+  if(board.every(row=>row.every(v=>v!==0))){gameOver=true;recordLose();statusEl.textContent='平局！点击重新开局';return;}
+}
+canvas.addEventListener('pointerdown',e=>{
+  if(gameOver)return;
+  const rect=canvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(SIZE/rect.width);
+  const y=(e.clientY-rect.top)*(SIZE/rect.height);
+  const c=Math.round((x-M)/CELL),r=Math.round((y-M)/CELL);
+  if(!inB(r,c)||board[r][c]!==0)return;
+  doMove(r,c,1);
+  if(gameOver)return;
+  statusEl.textContent='AI 思考中...';
+  setTimeout(()=>{
+    if(gameOver)return;
+    const [ar,ac]=aiMove();
+    if(ar>=0)doMove(ar,ac,2);
+    if(!gameOver)statusEl.textContent='你执黑先手，点击棋盘落子';
+  },150);
+});
+document.getElementById('newGame').onclick=reset;
+reset();
+</script>
+</body>
+</html>

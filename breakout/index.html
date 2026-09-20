@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>breakout | visitor@game.mujiu.net</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;touch-action:manipulation}
+#game{border:1px solid #444;background:#111;max-width:100%;cursor:pointer;touch-action:none}
+.info{margin-bottom:.5rem;text-align:center}
+.difficulty{margin-bottom:.5rem}
+.difficulty select{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
+.rank-area{margin:.5rem 0;font-size:14px}
+.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
+.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
+.tip{margin-top:.5rem;color:#888;font-size:13px}
+.ctrl{margin-top:1rem;display:grid;grid-template-columns:repeat(2,72px);gap:12px}
+.ctrl button{width:72px;height:56px;border:1px solid #555;background:#1a1a1a;color:#fff;font-size:20px;border-radius:4px;cursor:pointer}
+.back{margin-top:1rem;color:#888}
+.back a{color:#fff;text-decoration:none}
+.back a:hover{background:#222}
+</style>
+</head>
+<body>
+<div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span></div>
+<div class="difficulty">难度：
+    <select id="diff">
+        <option value="1">简单(初始)</option>
+        <option value="2">普通</option>
+        <option value="3">困难</option>
+    </select>
+</div>
+<div class="rank-area">
+    你的数字ID：<input type="text" id="uid" placeholder="纯数字" maxlength="12">
+    <button id="submitScore" disabled>提交分数</button>
+    <button id="showRank" disabled>排行榜</button>
+</div>
+<canvas id="game"></canvas>
+<div class="tip">← → 键 / 触屏拖拽或按钮控制挡板</div>
+<div class="ctrl">
+<button data-op="left">←</button>
+<button data-op="right">→</button>
+</div>
+<div class="back"><a href="/">← back to terminal</a></div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('localBest');
+const diffSel=document.getElementById('diff'),uidInput=document.getElementById('uid');
+const KEY='breakout_best';
+let best=Number(localStorage.getItem(KEY))||0;bestEl.textContent=best;
+if(localStorage.getItem('game_uid'))uidInput.value=localStorage.getItem('game_uid');
+const W=Math.min(420,window.innerWidth-24),H=480;
+canvas.width=W;canvas.height=H;
+const PW=84,PH=12,BR=6,ROWS=5,COLS=8;
+const BW=(W-20)/COLS,BH=20;
+let paddleX,ball,bricks,score,loop,speed,alive,won;
+const BCOLORS=['#f44','#f90','#ff0','#4f4','#0ff'];
+function cfg(v){speed=v==='1'?2.4:v==='2'?3.3:4.2;}
+function reset(){
+  paddleX=(W-PW)/2;
+  ball={x:W/2,y:H-70,vx:0,vy:-speed}; // 开局垂直向上，速度恒= speed
+  bricks=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)bricks.push({x:10+c*BW,y:40+r*(BH+6),w:BW-2,h:BH-2,alive:true,color:BCOLORS[r]});
+  score=0;scoreEl.textContent=0;alive=true;won=false;
+}
+// 归一化：保证任意碰撞后球速幅值恒等于 speed，轨迹稳定不漂
+function normalize(vx,vy){
+  const m=Math.hypot(vx,vy)||1;
+  return [vx/m*speed,vy/m*speed];
+}
+function saveBest(){if(score>best){best=score;localStorage.setItem(KEY,best);bestEl.textContent=best;}}
+function update(){
+  ball.x+=ball.vx;ball.y+=ball.vy;
+  if(ball.x-BR<0){ball.x=BR;ball.vx=Math.abs(ball.vx);}
+  if(ball.x+BR>W){ball.x=W-BR;ball.vx=-Math.abs(ball.vx);}
+  if(ball.y-BR<0){ball.y=BR;ball.vy=Math.abs(ball.vy);}
+  if(ball.y+BR>H){
+    alive=false;clearInterval(loop);saveBest();
+    alert('game over! refresh to restart');
+    return;
+  }
+  // 挡板碰撞：角度限制在 ±60°，速度恒定
+  if(ball.vy>0&&ball.y+BR>=H-PH-20&&ball.y+BR<=H-PH-8&&ball.x>=paddleX-BR&&ball.x<=paddleX+PW+BR){
+    const rel=(ball.x-(paddleX+PW/2))/(PW/2); // -1..1
+    const maxA=Math.PI/3;                     // 60°
+    const ang=rel*maxA;
+    ball.vx=speed*Math.sin(ang);
+    ball.vy=-Math.abs(speed*Math.cos(ang));
+  }
+  // 砖块碰撞：反弹并保持速度恒定
+  for(const b of bricks){
+    if(!b.alive)continue;
+    if(ball.x+BR>b.x&&ball.x-BR<b.x+b.w&&ball.y+BR>b.y&&ball.y-BR<b.y+b.h){
+      b.alive=false;
+      // 根据击打方向翻转
+      const fromLeft=ball.vx>0,fromTop=ball.vy>0;
+      ball.vy=-ball.vy;
+      if(fromLeft!==fromTop===false){} // no-op placeholder
+      const [nvx,nvy]=normalize(ball.vx,ball.vy);
+      ball.vx=nvx;ball.vy=nvy;
+      score+=10;scoreEl.textContent=score;saveBest();
+    }
+  }
+  if(bricks.every(b=>!b.alive)){
+    alive=false;clearInterval(loop);won=true;saveBest();
+    alert('全部击碎！本局 '+score+' 分');
+    return;
+  }
+}
+function draw(){
+  ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#fff';ctx.fillRect(paddleX,H-PH-20,PW,PH);
+  ctx.fillStyle='#f44';ctx.beginPath();ctx.arc(ball.x,ball.y,BR,0,Math.PI*2);ctx.fill();
+  bricks.forEach(b=>{if(b.alive){ctx.fillStyle=b.color;ctx.fillRect(b.x,b.y,b.w,b.h);}});
+}
+function tick(){update();draw();}
+function start(){clearInterval(loop);cfg(diffSel.value);reset();draw();loop=setInterval(tick,1000/60);}
+start();
+diffSel.onchange=start;
+function movePaddle(dir){paddleX+=dir;if(paddleX<0)paddleX=0;if(paddleX>W-PW)paddleX=W-PW;}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft')movePaddle(-18);
+  if(e.key==='ArrowRight')movePaddle(18);
+});
+document.querySelectorAll('[data-op]').forEach(b=>{
+  b.addEventListener('pointerdown',()=>{
+    const step=b.dataset.op==='left'?-14:14;
+    const iv=setInterval(()=>movePaddle(step),40);
+    const stop=()=>clearInterval(iv);
+    b.addEventListener('pointerup',stop,{once:true});
+    b.addEventListener('pointerleave',stop,{once:true});
+  });
+});
+let drag=false;
+canvas.addEventListener('pointerdown',e=>{drag=true;});
+window.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)*(W/rect.width);
+  paddleX=mx-PW/2;
+  if(paddleX<0)paddleX=0;if(paddleX>W-PW)paddleX=W-PW;
+});
+window.addEventListener('pointerup',()=>drag=false);
+</script>
+</body>
+</html>

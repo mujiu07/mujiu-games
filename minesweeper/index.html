@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>minesweeper | visitor@game.mujiu.net</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;touch-action:manipulation}
+.info{margin-bottom:.5rem;text-align:center}
+.difficulty{margin-bottom:.5rem}
+.difficulty select,.custom input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
+.custom{margin-bottom:.5rem;font-size:14px;display:none}
+.custom input{width:56px;margin-right:4px}
+.custom label{color:#aaa}
+.rank-area{margin:.5rem 0;font-size:14px}
+.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
+.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
+#board{display:grid;gap:2px;background:#1a1a1a;border:1px solid #444;padding:4px;margin:0 auto;width:max-content}
+.cell{width:var(--cell,30px);height:var(--cell,30px);background:#2a2a2a;border:1px solid #444;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;user-select:none}
+.cell.open{background:#1a1a1a;cursor:default}
+.cell.flag{color:#ffd700}
+.cell.mine{color:#f44}
+.flag-toggle{margin-bottom:.5rem;font-size:14px}
+.flag-toggle button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 8px;cursor:pointer}
+.back{margin-top:1rem;color:#888}
+.back a{color:#fff;text-decoration:none}
+.back a:hover{background:#222}
+</style>
+</head>
+<body>
+<div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span> | <span id="coefLabel"></span></div>
+<div class="difficulty">难度：
+    <select id="diff">
+        <option value="1">简单(初始)</option>
+        <option value="2">普通</option>
+        <option value="3">困难</option>
+        <option value="custom">自定义</option>
+    </select>
+</div>
+<div class="custom" id="customBox">
+    <label>行</label><input type="number" id="cRows" min="3" max="30" value="9">
+    <label>列</label><input type="number" id="cCols" min="3" max="30" value="9">
+    <label>雷</label><input type="number" id="cMines" min="1" max="80" value="12">
+    <button id="applyCustom" style="background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 8px;cursor:pointer">开始</button>
+</div>
+<div class="flag-toggle">标记模式：<button id="flagBtn">长按标记(关)</button></div>
+<div class="rank-area">
+    你的数字ID：<input type="text" id="uid" placeholder="纯数字" maxlength="12">
+    <button id="submitScore" disabled>提交分数</button>
+    <button id="showRank" disabled>排行榜</button>
+</div>
+<div id="board"></div>
+<div class="back"><a href="/">← back to terminal</a></div>
+<script>
+const boardEl=document.getElementById('board'),scoreEl=document.getElementById('score');
+const bestEl=document.getElementById('localBest'),diffSel=document.getElementById('diff');
+const uidInput=document.getElementById('uid'),flagBtn=document.getElementById('flagBtn');
+const customBox=document.getElementById('customBox'),coefLabel=document.getElementById('coefLabel');
+const cRows=document.getElementById('cRows'),cCols=document.getElementById('cCols'),cMines=document.getElementById('cMines');
+const applyBtn=document.getElementById('applyCustom');
+const KEY='mine_best';
+let best=Number(localStorage.getItem(KEY))||0;bestEl.textContent=best;
+if(localStorage.getItem('game_uid'))uidInput.value=localStorage.getItem('game_uid');
+let R=8,C=8,M=10,cells=[],gameOver=false,flagMode=false;
+let revealedCount=0,startTime=0,coef=1,finished=false;
+
+// ===== 计分核心 =====
+// 总分 = (翻开安全格×10 + 全对奖励 + 通关速度奖励) × 难度系数
+function clearBonus(){return R*C*5;}                          // 全对奖励
+function speedBonus(elapsed){return Math.max(0,R*C*0.8-elapsed)*2;} // 速度奖励
+function baseScore(){return revealedCount*10;}                // 基础分
+function curScore(){return Math.round(baseScore()*coef);}     // 实时显示分(通关前)
+function finalScore(elapsed){return Math.round((baseScore()+clearBonus()+speedBonus(elapsed))*coef);} // 通关结算分
+
+function cfg(v){
+  if(v==='1'){R=8;C=8;M=10;coef=1.0;}
+  else if(v==='2'){R=10;C=10;M=15;coef=1.5;}
+  else if(v==='3'){R=12;C=12;M=25;coef=2.0;}
+  else{readCustom();coef=Math.min(2.5,1+(M/(R*C))*8);}
+  if(M>=R*C)M=R*C-1;
+  const maxW=Math.min(440,window.innerWidth-40);
+  const cell=Math.max(12,Math.min(30,Math.floor((maxW-8)/C)));
+  document.documentElement.style.setProperty('--cell',cell+'px');
+  coefLabel.textContent='系数x'+coef.toFixed(2);
+  reset();
+}
+function readCustom(){
+  R=Math.max(3,Math.min(30,parseInt(cRows.value)||9));
+  C=Math.max(3,Math.min(30,parseInt(cCols.value)||9));
+  M=Math.max(1,parseInt(cMines.value)||10);
+  if(M>=R*C){alert('雷数不能≥总格子数，已自动设为'+(R*C-1));M=R*C-1;}
+}
+function reset(){
+  gameOver=false;finished=false;revealedCount=0;startTime=Date.now();
+  scoreEl.textContent=0;
+  cells=[];
+  for(let i=0;i<R;i++){cells[i]=[];for(let j=0;j<C;j++)cells[i][j]={mine:false,open:false,flag:false,near:0};}
+  let placed=0;
+  while(placed<M){const r=Math.floor(Math.random()*R),c=Math.floor(Math.random()*C);if(!cells[r][c].mine){cells[r][c].mine=true;placed++;}}
+  for(let i=0;i<R;i++)for(let j=0;j<C;j++)cells[i][j].near=countNear(i,j);
+  boardEl.style.gridTemplateColumns=`repeat(${C},auto)`;
+  boardEl.innerHTML='';
+  for(let i=0;i<R;i++)for(let j=0;j<C;j++){
+    const d=document.createElement('div');d.className='cell';d.dataset.r=i;d.dataset.c=j;
+    boardEl.appendChild(d);
+  }
+}
+function countNear(r,c){let n=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const rr=r+i,cc=c+j;if(rr>=0&&rr<R&&cc>=0&&cc<C&&cells[rr][cc].mine)n++;}return n;}
+function updateDisplay(s){scoreEl.textContent=s;if(s>best){best=s;localStorage.setItem(KEY,best);bestEl.textContent=best;}}
+function reveal(r,c){
+  if(r<0||r>=R||c<0||c>=C||finished)return;
+  const cell=cells[r][c];
+  if(cell.open||cell.flag)return;
+  cell.open=true;
+  const d=boardEl.children[r*C+c];
+  d.classList.add('open');
+  if(cell.mine){
+    d.textContent='💣';d.classList.add('mine');gameOver=true;finished=true;
+    cells.forEach((row,i)=>row.forEach((cl,j)=>{if(cl.mine){const el=boardEl.children[i*C+j];el.textContent='💣';el.classList.add('open','mine');}}));
+    updateDisplay(curScore());
+    alert('踩雷了！本局 '+curScore()+' 分');
+    return;
+  }
+  // 非雷格：基础分实时累计
+  revealedCount++;
+  if(cell.near>0){
+    d.textContent=cell.near;d.style.color=['','#6cf','#4f4','#f44','#a0f','#f90','#0ff','#fff','#ff9'][cell.near];
+  }else{
+    for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(i||j)reveal(r+i,c+j);
+  }
+  updateDisplay(curScore());
+  // 通关判定：全部安全格翻开
+  if(revealedCount===R*C-M){
+    finished=true;gameOver=true;
+    const elapsed=(Date.now()-startTime)/1000;
+    const total=finalScore(elapsed);
+    updateDisplay(total);
+    setTimeout(()=>alert('全对通关！用时 '+elapsed.toFixed(1)+' 秒 | 总分 '+total+' 分'),10);
+  }
+}
+function toggleFlag(r,c){
+  const cell=cells[r][c];if(cell.open)return;
+  cell.flag=!cell.flag;
+  const d=boardEl.children[r*C+c];
+  d.textContent=cell.flag?'🚩':'';d.classList.toggle('flag',cell.flag);
+}
+diffSel.onchange=()=>{
+  const v=diffSel.value;
+  customBox.style.display=v==='custom'?'block':'none';
+  cfg(v);
+};
+applyBtn.onclick=()=>{readCustom();coef=Math.min(2.5,1+(M/(R*C))*8);coefLabel.textContent='系数x'+coef.toFixed(2);reset();};
+flagBtn.onclick=()=>{flagMode=!flagMode;flagBtn.textContent=flagMode?'点按标记(开)':'长按标记(关)';};
+boardEl.addEventListener('contextmenu',e=>{e.preventDefault();const d=e.target.closest('.cell');if(d){toggleFlag(+d.dataset.r,+d.dataset.c);}});
+let pressTimer=null;
+boardEl.addEventListener('pointerdown',e=>{
+  const d=e.target.closest('.cell');if(!d||gameOver)return;
+  const r=+d.dataset.r,c=+d.dataset.c;
+  if(flagMode){toggleFlag(r,c);return;}
+  pressTimer=setTimeout(()=>{toggleFlag(r,c);pressTimer=null;},700);
+});
+boardEl.addEventListener('pointerup',e=>{
+  if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}
+  const d=e.target.closest('.cell');if(!d||gameOver)return;
+  const r=+d.dataset.r,c=+d.dataset.c;
+  if(!flagMode&&!cells[r][c].flag)reveal(r,c);
+});
+boardEl.addEventListener('pointerleave',()=>{if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}});
+cfg(diffSel.value);
+</script>
+</body>
+</html>

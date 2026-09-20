@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>tictactoe | visitor@game.mujiu.net</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;touch-action:manipulation}
+.info{margin-bottom:.5rem;text-align:center}
+.difficulty{margin-bottom:.5rem}
+.difficulty select{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
+.rank-area{margin:.5rem 0;font-size:14px}
+.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
+.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
+.status{margin-bottom:.5rem;color:#aaa;font-size:14px}
+.rule{margin-bottom:.5rem;color:#666;font-size:13px;max-width:340px;text-align:center}
+.newbtn{margin-bottom:.5rem}
+.newbtn button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px 12px;cursor:pointer}
+#board{display:grid;grid-template-columns:repeat(3,min(96px,calc((100vw - 40px)/3)));gap:6px;background:#1a1a1a;border:1px solid #444;padding:6px}
+.cell{height:min(96px,calc((100vw - 40px)/3));background:#222;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:44px;cursor:pointer;user-select:none}
+.cell.taken{cursor:default}
+.back{margin-top:1rem;color:#888}
+.back a{color:#fff;text-decoration:none}
+.back a:hover{background:#222}
+</style>
+</head>
+<body>
+<div class="info">赢局数: <span id="score">0</span> | 连胜: <span id="streak">0</span> | 纪录: <span id="localBest">0</span></div>
+<div class="difficulty">难度：
+    <select id="diff">
+        <option value="1">简单(初始)</option>
+        <option value="2">普通</option>
+        <option value="3">困难</option>
+    </select>
+</div>
+<div class="rank-area">
+    你的数字ID：<input type="text" id="uid" placeholder="纯数字" maxlength="12">
+    <button id="submitScore" disabled>提交分数</button>
+    <button id="showRank" disabled>排行榜</button>
+</div>
+<div class="rule">规则：每方最多保留最近 4 子，下第 5 子会顶掉自己最早的那颗</div>
+<div class="status" id="status">你执 X 先手</div>
+<div class="newbtn"><button id="newGame">重新开局</button></div>
+<div id="board"></div>
+<div class="back"><a href="/">← back to terminal</a></div>
+<script>
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('localBest');
+const streakEl=document.getElementById('streak');
+const diffSel=document.getElementById('diff'),uidInput=document.getElementById('uid');
+const statusEl=document.getElementById('status'),boardEl=document.getElementById('board');
+const KEY='tic_streak';   // ✅ 纪录改为最高连胜
+let best=Number(localStorage.getItem(KEY))||0;bestEl.textContent=best;
+if(localStorage.getItem('game_uid'))uidInput.value=localStorage.getItem('game_uid');
+const MAX_PER=4;
+let board=[],turn,gameOver;
+let wins=0,streak=0;      // ✅ 赢局数 + 当前连胜
+let p1Moves=[],p2Moves=[];
+
+function reset(){
+  board=Array(9).fill(0);
+  p1Moves=[];p2Moves=[];
+  turn=1;gameOver=false;
+  boardEl.innerHTML='';
+  for(let i=0;i<9;i++){
+    const d=document.createElement('div');d.className='cell';d.dataset.i=i;
+    d.textContent='';d.addEventListener('click',()=>playerMove(+d.dataset.i));
+    boardEl.appendChild(d);
+  }
+  statusEl.textContent='你执 X 先手';
+}
+function recordWin(){
+  wins++;streak++;
+  scoreEl.textContent=wins;streakEl.textContent=streak;
+  if(streak>best){best=streak;localStorage.setItem(KEY,best);bestEl.textContent=best;}
+}
+function recordLose(){streak=0;streakEl.textContent=0;}
+function place(i,p){
+  board[i]=p;
+  const list=p===1?p1Moves:p2Moves;
+  list.push(i);
+  if(list.length>MAX_PER){
+    const old=list.shift();
+    board[old]=0;
+  }
+}
+function isWin(brd,p){
+  const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return lines.some(([a,b,c])=>brd[a]===p&&brd[b]===p&&brd[c]===p);
+}
+function checkWin(p){return isWin(board,p);}
+function drawBoard(){
+  for(let i=0;i<9;i++){
+    const d=boardEl.children[i];
+    d.textContent=board[i]===1?'X':board[i]===2?'O':'';
+    if(board[i])d.classList.add('taken');else d.classList.remove('taken');
+  }
+}
+function emptyCells(){const e=[];board.forEach((v,i)=>{if(!v)e.push(i);});return e;}
+function simulateMove(p,i){
+  const sim=board.slice();
+  const list=p===1?[...p1Moves]:[...p2Moves];
+  list.push(i);
+  let removed=null;
+  if(list.length>MAX_PER)removed=list.shift();
+  sim[i]=p;
+  if(removed!==null)sim[removed]=0;
+  return sim;
+}
+function findWinning(p){
+  for(const i of emptyCells()){
+    const sim=simulateMove(p,i);
+    if(isWin(sim,p))return i;
+  }
+  return -1;
+}
+function findBlocking(){
+  for(const i of emptyCells()){
+    const sim=simulateMove(1,i);
+    if(isWin(sim,1))return i;
+  }
+  return -1;
+}
+function aiMove(){
+  const empty=emptyCells();
+  if(!empty.length)return -1;
+  const diff=diffSel.value;
+  if(diff==='1')return empty[Math.floor(Math.random()*empty.length)];
+  const w=findWinning(2);
+  if(w!==-1)return w;
+  const b=findBlocking();
+  if(b!==-1)return b;
+  const center=4;
+  if(board[center]===0&&(diff==='2'||diff==='3'))return center;
+  const corners=[0,2,6,8];
+  const openC=corners.filter(i=>board[i]===0);
+  if(openC.length&&(diff==='2'||diff==='3'))return openC[Math.floor(Math.random()*openC.length)];
+  if(diff==='3'){
+    for(const i of empty){
+      const sim=simulateMove(1,i);
+      if(isWin(sim,1))return i;
+    }
+  }
+  return empty[Math.floor(Math.random()*empty.length)];
+}
+function playerMove(i){
+  if(gameOver||board[i]!==0)return;
+  place(i,1);drawBoard();
+  if(checkWin(1)){gameOver=true;recordWin();statusEl.textContent='你赢了！点击重新开局';return;}
+  if(emptyCells().length===0){gameOver=true;recordLose();statusEl.textContent='平局！点击重新开局';return;}
+  setTimeout(()=>{
+    if(gameOver)return;
+    const pos=aiMove();
+    if(pos>=0){
+      place(pos,2);drawBoard();
+      if(checkWin(2)){gameOver=true;recordLose();statusEl.textContent='AI 赢了！点击重新开局';return;}
+      if(emptyCells().length===0){gameOver=true;recordLose();statusEl.textContent='平局！点击重新开局';return;}
+      statusEl.textContent='轮到你了 (X)';
+    }
+  },200);
+}
+document.getElementById('newGame').onclick=reset;
+diffSel.onchange=reset;
+reset();
+</script>
+</body>
+</html>

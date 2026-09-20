@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>flappy | visitor@game.mujiu.net</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;touch-action:manipulation}
+#game{border:1px solid #444;background:#111;max-width:100%;cursor:pointer}
+.info{margin-bottom:.5rem;text-align:center}
+.difficulty{margin-bottom:.5rem}
+.difficulty select{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
+.rank-area{margin:.5rem 0;font-size:14px}
+.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
+.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
+.tip{margin-top:.5rem;color:#888;font-size:13px}
+.back{margin-top:1rem;color:#888}
+.back a{color:#fff;text-decoration:none}
+.back a:hover{background:#222}
+</style>
+</head>
+<body>
+<div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span></div>
+<div class="difficulty">难度：
+    <select id="diff">
+        <option value="1">简单(初始)</option>
+        <option value="2">普通</option>
+        <option value="3">困难</option>
+    </select>
+</div>
+<div class="rank-area">
+    你的数字ID：<input type="text" id="uid" placeholder="纯数字" maxlength="12">
+    <button id="submitScore" disabled>提交分数</button>
+    <button id="showRank" disabled>排行榜</button>
+</div>
+<canvas id="game"></canvas>
+<div class="tip">点击画面 / 空格 / 触屏点按 控制小鸟跳跃</div>
+<div class="back"><a href="/">← back to terminal</a></div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('localBest');
+const diffSel=document.getElementById('diff'),uidInput=document.getElementById('uid');
+const KEY='flappy_best';
+let best=Number(localStorage.getItem(KEY))||0;bestEl.textContent=best;
+if(localStorage.getItem('game_uid'))uidInput.value=localStorage.getItem('game_uid');
+const W=Math.min(420,window.innerWidth-24),H=Math.min(560,window.innerHeight-260);
+canvas.width=W;canvas.height=H;
+let bird, pipes, score, loop, speed, gap, gravity, jumpV, alive;
+const PIPE_W=52;
+
+// 难度配置：速度越来越快、缝越来越窄，但跳跃高度始终匹配缝隙，
+// 保证任意难度下"钻缝"物理上都是可行的
+function cfg(v){
+  if(v==='1'){speed=1.6;gap=0.40;gravity=0.22;jumpV=-6.4;}
+  else if(v==='2'){speed=2.2;gap=0.36;gravity=0.26;jumpV=-6.8;}
+  else{speed=2.8;gap=0.32;gravity=0.29;jumpV=-7.2;}
+}
+function reset(){
+  bird={x:60,y:H/2,vy:0,r:11};
+  pipes=[];score=0;scoreEl.textContent=0;alive=true;
+  for(let i=0;i<3;i++)pipes.push(newPipe(i*(W/3)+W/2));
+}
+function newPipe(x){
+  const gw=H*gap;
+  const top=Math.random()*(H-gw-80)+40;
+  return {x,top,bottom:top+gw,scored:false};
+}
+function jump(){if(alive)bird.vy=jumpV;}
+function update(){
+  bird.vy+=gravity;bird.y+=bird.vy;
+  pipes.forEach(p=>{p.x-=speed;
+    if(!p.scored&&p.x+PIPE_W<bird.x){p.scored=true;score++;scoreEl.textContent=score;
+      if(score>best){best=score;localStorage.setItem(KEY,best);bestEl.textContent=best;}}});
+  if(pipes[pipes.length-1].x<W-120)pipes.push(newPipe(pipes[pipes.length-1].x+W/2));
+  if(pipes[0].x+PIPE_W<0)pipes.shift();
+  const hitGround=bird.y+bird.r>H-2;
+  const hitCeil=bird.y-bird.r<0;
+  let hitPipe=false;
+  for(const p of pipes){
+    if(bird.x+bird.r>p.x&&bird.x-bird.r<p.x+PIPE_W){
+      if(bird.y-bird.r<p.top||bird.y+bird.r>p.bottom){hitPipe=true;break;}
+    }
+  }
+  if(hitGround||hitCeil||hitPipe){
+    alive=false;clearInterval(loop);
+    if(score>best){best=score;localStorage.setItem(KEY,best);bestEl.textContent=best;}
+    alert('game over! refresh to restart');
+    return;
+  }
+}
+function draw(){
+  ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#2d5a2d';
+  pipes.forEach(p=>{ctx.fillRect(p.x,0,PIPE_W,p.top);ctx.fillRect(p.x,p.bottom,PIPE_W,H-p.bottom);});
+  ctx.fillStyle='#ffd700';ctx.beginPath();ctx.arc(bird.x,bird.y,bird.r,0,Math.PI*2);ctx.fill();
+}
+function tick(){update();draw();}
+function start(){
+  clearInterval(loop);cfg(diffSel.value);reset();draw();
+  loop=setInterval(tick,1000/60);
+}
+start();
+diffSel.onchange=start;
+canvas.addEventListener('pointerdown',jump);
+document.addEventListener('keydown',e=>{if(e.key===' '||e.key==='ArrowUp'){e.preventDefault();jump();}});
+</script>
+</body>
+</html>
