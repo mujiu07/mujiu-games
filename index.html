@@ -66,7 +66,8 @@
 
     <div class="term">
         <div id="term"></div>
-        <div class="input-line"><span class="prompt">visitor@game.mujiu.net:~ $ </span><input id="input" autofocus autocomplete="off" spellcheck="false" aria-label="命令输入"></div>
+        <!-- @ 用实体写成 &#64;：Cloudflare 邮箱混淆会把 user@host 形式当邮箱改写，导致提示符被替换成 [email protected] -->
+        <div class="input-line"><span class="prompt">visitor&#64;game.mujiu.net:~ $ </span><input id="input" autofocus autocomplete="off" spellcheck="false" aria-label="命令输入"></div>
     </div>
 
     <div class="hint">
