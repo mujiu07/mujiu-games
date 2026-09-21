@@ -4,26 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>2048 | visitor@game.mujiu.net</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/theme.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 1rem 1rem}
 .info{margin-bottom:.5rem;text-align:center}
-.difficulty{margin-bottom:.5rem}
-.difficulty select{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
-.rank-area{margin:.5rem 0;font-size:14px}
-.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
-.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
-#board{display:grid;gap:8px;background:#1a1a1a;border:1px solid #444;padding:8px;margin:0 auto}
-.cell{width:72px;height:72px;background:#222;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:bold}
+.difficulty{margin-bottom:.5rem;color:var(--text-200)}
+.difficulty select{background:var(--panel);color:var(--text-100);border:1px solid var(--line-strong);padding:4px;border-radius:6px;font-family:inherit}
+.rank-area{margin:.5rem 0;font-size:14px;color:var(--text-200)}
+.rank-area input{background:var(--body-2);color:var(--text-100);border:1px solid var(--line-strong);padding:3px 6px;width:100px;border-radius:6px;font-family:inherit}
+.rank-area button{background:var(--panel);color:var(--text-100);border:1px solid var(--line-strong);padding:3px 8px;cursor:pointer;opacity:.75;border-radius:6px;font-family:inherit}
+#board{display:grid;gap:8px;background:color-mix(in srgb,var(--panel) 78%,transparent);border:1px solid var(--line-strong);padding:8px;margin:0 auto;border-radius:10px}
+.cell{width:72px;height:72px;background:var(--body-2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:bold;color:var(--text-100)}
 .ctrl{margin-top:1rem;display:grid;grid-template-columns:repeat(3,60px);gap:6px}
-.ctrl button{width:60px;height:60px;border:1px solid #555;background:#1a1a1a;color:#fff;font-size:20px;border-radius:4px;cursor:pointer}
-.back{margin-top:1rem;color:#888}
-.back a{color:#fff;text-decoration:none}
-.back a:hover{background:#222}
+.ctrl button{width:60px;height:60px;border:1px solid var(--line-strong);background:var(--panel);color:var(--text-100);font-size:20px;border-radius:8px;cursor:pointer;font-family:inherit;transition:border-color .16s,color .16s}
+.ctrl button:hover{border-color:var(--primary);color:var(--primary)}
+.back{margin-top:1rem;color:var(--text-300);font-size:13px}
+.back a{color:var(--text-200);text-decoration:none}
+.back a:hover{color:var(--primary)}
 @media (max-width:420px){.cell{width:min(70px,calc((100vw - 76px)/4));height:min(70px,calc((100vw - 76px)/4));font-size:20px}}
 </style>
 </head>
 <body>
+<div class="mj-top">
+  <a href="/">← 游戏列表</a>
+  <span class="sp"><a href="https://mujiu.net">主站</a><a href="https://gui.mujiu.net">图形版</a><a href="https://ask.mujiu.net">留言箱</a></span>
+</div>
 <div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span></div>
 <div class="difficulty">难度：
     <select id="diff">
@@ -43,7 +51,7 @@ body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,m
 <button data-dir="left">←</button><div></div><button data-dir="right">→</button>
 <div></div><button data-dir="down">↓</button><div></div>
 </div>
-<div class="back"><a href="/">← back to terminal</a></div>
+<div class="back"><a href="/">← 返回游戏列表</a> · <a href="https://mujiu.net">mujiu.net</a></div>
 <script>
 const scoreEl=document.getElementById('score'), bestEl=document.getElementById('localBest');
 const diffSel=document.getElementById('diff'), boardEl=document.getElementById('board');
@@ -66,9 +74,9 @@ function build(){
   for(let i=0;i<size*size;i++){const d=document.createElement('div');d.className='cell';boardEl.appendChild(d);}
 }
 function cellColor(v){
-  if(v===0)return '#222';
-  const m={'2':'#2d2d2d','4':'#3a3a3a','8':'#4a3a2a','16':'#5a3a1a','32':'#6a2a1a','64':'#8a2a1a','128':'#a33','256':'#c33','512':'#e33','1024':'#f55','2048':'#ff7'};
-  return m[v]||'#ffd700';
+  if(v===0)return '';
+  const m={'2':'#2a3a48','4':'#35485a','8':'#2c6b58','16':'#2f8a68','32':'#35a87c','64':'#0fae7f','128':'#05CE91','256':'#FF9D00','512':'#f08c00','1024':'#e07b00','2048':'#FFD166'};
+  return m[v]||'#FFD166';
 }
 function render(){
   for(let i=0;i<size;i++)for(let j=0;j<size;j++){

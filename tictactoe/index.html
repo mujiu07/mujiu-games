@@ -4,28 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>tictactoe | visitor@game.mujiu.net</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/theme.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;touch-action:manipulation}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 1rem 1rem;touch-action:manipulation}
 .info{margin-bottom:.5rem;text-align:center}
-.difficulty{margin-bottom:.5rem}
-.difficulty select{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
-.rank-area{margin:.5rem 0;font-size:14px}
-.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
-.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
-.status{margin-bottom:.5rem;color:#aaa;font-size:14px}
-.rule{margin-bottom:.5rem;color:#666;font-size:13px;max-width:340px;text-align:center}
+.difficulty{margin-bottom:.5rem;color:var(--text-200)}
+.difficulty select{background:var(--panel);color:var(--text-100);border:1px solid var(--line-strong);padding:4px;border-radius:6px;font-family:inherit}
+.rank-area{margin:.5rem 0;font-size:14px;color:var(--text-200)}
+.rank-area input{background:var(--body-2);color:var(--text-100);border:1px solid var(--line-strong);padding:3px 6px;width:100px;border-radius:6px;font-family:inherit}
+.rank-area button{background:var(--panel);color:var(--text-100);border:1px solid var(--line-strong);padding:3px 8px;cursor:pointer;opacity:.75;border-radius:6px;font-family:inherit}
+.status{margin-bottom:.5rem;color:var(--secondary);font-size:14px}
+.rule{margin-bottom:.5rem;color:var(--text-300);font-size:13px;max-width:340px;text-align:center}
 .newbtn{margin-bottom:.5rem}
-.newbtn button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px 12px;cursor:pointer}
-#board{display:grid;grid-template-columns:repeat(3,min(96px,calc((100vw - 40px)/3)));gap:6px;background:#1a1a1a;border:1px solid #444;padding:6px}
-.cell{height:min(96px,calc((100vw - 40px)/3));background:#222;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:44px;cursor:pointer;user-select:none}
+.newbtn button{background:var(--panel);color:var(--text-100);border:1px solid var(--line-strong);padding:4px 14px;cursor:pointer;border-radius:6px;font-family:inherit;transition:border-color .16s,color .16s}
+.newbtn button:hover{border-color:var(--primary);color:var(--primary)}
+#board{display:grid;grid-template-columns:repeat(3,min(96px,calc((100vw - 40px)/3)));gap:6px;background:color-mix(in srgb,var(--panel) 78%,transparent);border:1px solid var(--line-strong);padding:6px;border-radius:10px}
+.cell{height:min(96px,calc((100vw - 40px)/3));background:var(--body-2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:44px;cursor:pointer;user-select:none;color:var(--text-100);transition:background .16s}
+.cell:hover{background:color-mix(in srgb,var(--primary) 14%,var(--body-2))}
 .cell.taken{cursor:default}
-.back{margin-top:1rem;color:#888}
-.back a{color:#fff;text-decoration:none}
-.back a:hover{background:#222}
+.cell.taken:hover{background:var(--body-2)}
+.back{margin-top:1rem;color:var(--text-300);font-size:13px}
+.back a{color:var(--text-200);text-decoration:none}
+.back a:hover{color:var(--primary)}
 </style>
 </head>
 <body>
+<div class="mj-top">
+  <a href="/">← 游戏列表</a>
+  <span class="sp"><a href="https://mujiu.net">主站</a><a href="https://gui.mujiu.net">图形版</a><a href="https://ask.mujiu.net">留言箱</a></span>
+</div>
 <div class="info">赢局数: <span id="score">0</span> | 连胜: <span id="streak">0</span> | 纪录: <span id="localBest">0</span></div>
 <div class="difficulty">难度：
     <select id="diff">
@@ -43,7 +53,7 @@ body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,m
 <div class="status" id="status">你执 X 先手</div>
 <div class="newbtn"><button id="newGame">重新开局</button></div>
 <div id="board"></div>
-<div class="back"><a href="/">← back to terminal</a></div>
+<div class="back"><a href="/">← 返回游戏列表</a> · <a href="https://mujiu.net">mujiu.net</a></div>
 <script>
 const scoreEl=document.getElementById('score'),bestEl=document.getElementById('localBest');
 const streakEl=document.getElementById('streak');

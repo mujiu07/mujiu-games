@@ -4,23 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>tetris | visitor@game.mujiu.net</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/theme.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
-  background:#0d1117;
-  color:#fff;
-  font-family:"JetBrains Mono",Menlo,Consolas,monospace;
   min-height:100vh;
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  padding:1rem;
+  padding:56px 1rem 1rem;
 }
 #game{
-  border:1px solid #444;
-  background:#111;
+  border:1px solid var(--line-strong);
+  background:var(--body-2);
   max-width:100%;
+  border-radius:8px;
 }
 .info{
   margin-bottom:0.5rem;
@@ -28,30 +29,39 @@ body{
 }
 .difficulty{
   margin-bottom:0.5rem;
+  color:var(--text-200);
 }
 .difficulty select{
-  background:#1a1a1a;
-  color:#fff;
-  border:1px solid #555;
+  background:var(--panel);
+  color:var(--text-100);
+  border:1px solid var(--line-strong);
   padding:4px;
+  border-radius:6px;
+  font-family:inherit;
 }
 .rank-area{
   margin:0.5rem 0;
   font-size:14px;
+  color:var(--text-200);
 }
 .rank-area input{
-  background:#1a1a1a;
-  color:#fff;
-  border:1px solid #555;
-  padding:3px;
+  background:var(--body-2);
+  color:var(--text-100);
+  border:1px solid var(--line-strong);
+  padding:3px 6px;
   width:100px;
+  border-radius:6px;
+  font-family:inherit;
 }
 .rank-area button{
-  background:#1a1a1a;
-  color:#fff;
-  border:1px solid #555;
-  padding:3px 6px;
+  background:var(--panel);
+  color:var(--text-100);
+  border:1px solid var(--line-strong);
+  padding:3px 8px;
   cursor:pointer;
+  opacity:.75;
+  border-radius:6px;
+  font-family:inherit;
 }
 .ctrl{
   margin-top:1rem;
@@ -61,21 +71,29 @@ body{
 }
 .ctrl button{
   width:60px;height:60px;
-  border:1px solid #555;
-  background:#1a1a1a;
-  color:#fff;
+  border:1px solid var(--line-strong);
+  background:var(--panel);
+  color:var(--text-100);
   font-size:18px;
-  border-radius:4px;
+  border-radius:8px;
+  font-family:inherit;
+  transition:border-color .16s,color .16s;
 }
+.ctrl button:hover{border-color:var(--primary);color:var(--primary)}
 .back{
   margin-top:1rem;
-  color:#888;
+  color:var(--text-300);
+  font-size:13px;
 }
-.back a{color:#fff;text-decoration:none}
-.back a:hover{background:#222}
+.back a{color:var(--text-200);text-decoration:none}
+.back a:hover{color:var(--primary)}
 </style>
 </head>
 <body>
+<div class="mj-top">
+  <a href="/">← 游戏列表</a>
+  <span class="sp"><a href="https://mujiu.net">主站</a><a href="https://gui.mujiu.net">图形版</a><a href="https://ask.mujiu.net">留言箱</a></span>
+</div>
 <div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span></div>
 <div class="difficulty">难度：
     <select id="diff">
@@ -101,7 +119,7 @@ body{
 <button data-op="fastDrop">⏷</button>
 <div></div>
 </div>
-<div class="back"><a href="/">← back to terminal</a></div>
+<div class="back"><a href="/">← 返回游戏列表</a> · <a href="https://mujiu.net">mujiu.net</a></div>
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -128,7 +146,7 @@ const SHAPES = [
   [[1,1,0],[0,1,1]],
   [[0,1,1],[1,1,0]]
 ];
-const COLORS = ['#0ff','#ff0','#00f','#ffa500','#f0f','#0f0','#f44'];
+const COLORS = ['#05CE91','#FFD166','#60a5fa','#FF9D00','#b388ff','#35a87c','#f87171'];
 
 let board = Array.from({length:ROWS},()=>Array(COLS).fill(0));
 let currentShape, currentX, currentY, currentColor;
@@ -217,7 +235,7 @@ function lock(){
   newShape();
 }
 function draw(){
-  ctx.fillStyle="#111";
+  ctx.fillStyle="#16212b";
   ctx.fillRect(0,0,canvas.width,canvas.height);
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){

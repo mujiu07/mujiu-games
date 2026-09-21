@@ -1,0 +1,261 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap");
+
+/* ==========================================================================
+   mujiu 站点统一设计令牌（game / ask / gui 共用）
+   —— 唯一真源是主站 src/components/styles/themes.ts 的 dark 主题。
+   改色请同步两处，否则站点之间会再次分叉。
+   ========================================================================== */
+
+:root {
+  --body: #1D2A35;
+  --body-2: #16212b;
+  --panel: #22313f;
+  --card: #22313f;
+  --primary: #05CE91;
+  --secondary: #FF9D00;
+  --text-100: #cbd5e1;
+  --text-200: #B2BDCC;
+  --text-300: #64748b;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --danger: #f87171;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--body);
+  background-image: radial-gradient(
+      800px 600px at 90% -10%,
+      color-mix(in srgb, var(--secondary) 8%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      700px 500px at 0% 20%,
+      color-mix(in srgb, var(--primary) 7%, transparent),
+      transparent 55%
+    );
+  background-attachment: fixed;
+  color: var(--text-100);
+  font-family: var(--font-mono);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* 复古扫线，与主站/gui 的质感一致 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.014) 0 1px,
+    transparent 1px 2px
+  );
+  opacity: 0.5;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--body);
+}
+
+/* ---------- 统一容器 ---------- */
+.shell {
+  max-width: 1020px;
+  margin: 0 auto;
+  padding: 22px 18px 60px;
+}
+
+/* ---------- 统一顶栏 ---------- */
+.mj-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  margin-bottom: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  backdrop-filter: blur(10px);
+  font-size: 13px;
+}
+.mj-bar .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+.mj-bar .logo {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--primary);
+  color: var(--body);
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+.mj-bar nav {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: var(--text-300);
+}
+.mj-bar nav a {
+  color: var(--text-200);
+}
+.mj-bar nav a:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+.mj-bar nav a[aria-current="page"] {
+  color: var(--primary);
+}
+
+/* ---------- 统一页脚 ---------- */
+.mj-foot {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--text-300);
+  font-size: 12px;
+  text-align: center;
+}
+.mj-foot .g {
+  color: var(--primary);
+}
+
+/* ---------- 统一按钮 ---------- */
+.mj-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
+  color: var(--text-100);
+  transition: transform 0.16s, border-color 0.16s, color 0.16s, box-shadow 0.16s;
+}
+.mj-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+  color: var(--primary);
+  text-decoration: none;
+}
+.mj-btn-primary {
+  background: var(--primary);
+  color: var(--body);
+  border-color: transparent;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.mj-btn-primary:hover {
+  color: var(--body);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+.mj-btn-danger {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+.mj-btn-danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- 统一表单控件 ---------- */
+.mj-input,
+.mj-select,
+.mj-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--body-2) 82%, var(--panel));
+  color: var(--text-100);
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 0.16s, box-shadow 0.16s;
+}
+.mj-input:focus,
+.mj-select:focus,
+.mj-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.mj-textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+.mj-input::placeholder,
+.mj-textarea::placeholder {
+  color: var(--text-300);
+}
+
+/* ---------- 统一卡片 ---------- */
+.mj-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  padding: 20px;
+}
+
+/* ---------- 游戏页紧凑顶栏（固定，含回主站入口） ---------- */
+.mj-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--body) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.mj-top a {
+  color: var(--text-200);
+}
+.mj-top a:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+.mj-top .sp {
+  display: flex;
+  gap: 14px;
+}

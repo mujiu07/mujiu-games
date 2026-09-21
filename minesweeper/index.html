@@ -4,31 +4,41 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>minesweeper | visitor@game.mujiu.net</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/theme.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;touch-action:manipulation}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 1rem 1rem;touch-action:manipulation}
 .info{margin-bottom:.5rem;text-align:center}
-.difficulty{margin-bottom:.5rem}
-.difficulty select,.custom input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:4px}
+.difficulty{margin-bottom:.5rem;color:var(--text-200)}
+.difficulty select,.custom input{background:var(--body-2);color:var(--text-100);border:1px solid var(--line-strong);padding:4px;border-radius:6px;font-family:inherit}
 .custom{margin-bottom:.5rem;font-size:14px;display:none}
 .custom input{width:56px;margin-right:4px}
-.custom label{color:#aaa}
-.rank-area{margin:.5rem 0;font-size:14px}
-.rank-area input{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px;width:100px}
-.rank-area button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 6px;cursor:pointer;opacity:.5}
-#board{display:grid;gap:2px;background:#1a1a1a;border:1px solid #444;padding:4px;margin:0 auto;width:max-content}
-.cell{width:var(--cell,30px);height:var(--cell,30px);background:#2a2a2a;border:1px solid #444;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;user-select:none}
-.cell.open{background:#1a1a1a;cursor:default}
-.cell.flag{color:#ffd700}
-.cell.mine{color:#f44}
-.flag-toggle{margin-bottom:.5rem;font-size:14px}
-.flag-toggle button{background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 8px;cursor:pointer}
-.back{margin-top:1rem;color:#888}
-.back a{color:#fff;text-decoration:none}
-.back a:hover{background:#222}
+.custom label{color:var(--text-300)}
+.rank-area{margin:.5rem 0;font-size:14px;color:var(--text-200)}
+.rank-area input{background:var(--body-2);color:var(--text-100);border:1px solid var(--line-strong);padding:3px 6px;width:100px;border-radius:6px;font-family:inherit}
+.rank-area button{background:var(--panel);color:var(--text-100);border:1px solid var(--line-strong);padding:3px 8px;cursor:pointer;opacity:.75;border-radius:6px;font-family:inherit}
+#board{display:grid;gap:2px;background:color-mix(in srgb,var(--panel) 78%,transparent);border:1px solid var(--line-strong);padding:4px;margin:0 auto;width:max-content;border-radius:8px}
+.cell{width:var(--cell,30px);height:var(--cell,30px);background:var(--panel);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;user-select:none;border-radius:3px}
+.cell:hover{background:color-mix(in srgb,var(--primary) 16%,var(--panel))}
+.cell.open{background:var(--body-2);cursor:default}
+.cell.open:hover{background:var(--body-2)}
+.cell.flag{color:#FFD166}
+.cell.mine{color:var(--danger)}
+.flag-toggle{margin-bottom:.5rem;font-size:14px;color:var(--text-200)}
+.flag-toggle button{background:var(--panel);color:var(--text-100);border:1px solid var(--line-strong);padding:3px 10px;cursor:pointer;border-radius:6px;font-family:inherit;transition:border-color .16s,color .16s}
+.flag-toggle button:hover{border-color:var(--primary);color:var(--primary)}
+.back{margin-top:1rem;color:var(--text-300);font-size:13px}
+.back a{color:var(--text-200);text-decoration:none}
+.back a:hover{color:var(--primary)}
 </style>
 </head>
 <body>
+<div class="mj-top">
+  <a href="/">← 游戏列表</a>
+  <span class="sp"><a href="https://mujiu.net">主站</a><a href="https://gui.mujiu.net">图形版</a><a href="https://ask.mujiu.net">留言箱</a></span>
+</div>
 <div class="info">score: <span id="score">0</span> | best: <span id="localBest">0</span> | <span id="coefLabel"></span></div>
 <div class="difficulty">难度：
     <select id="diff">
@@ -42,7 +52,7 @@ body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,m
     <label>行</label><input type="number" id="cRows" min="3" max="30" value="9">
     <label>列</label><input type="number" id="cCols" min="3" max="30" value="9">
     <label>雷</label><input type="number" id="cMines" min="1" max="80" value="12">
-    <button id="applyCustom" style="background:#1a1a1a;color:#fff;border:1px solid #555;padding:3px 8px;cursor:pointer">开始</button>
+    <button id="applyCustom" style="background:var(--panel);color:var(--text-100);border:1px solid var(--line-strong);padding:3px 10px;cursor:pointer;border-radius:6px;font-family:inherit">开始</button>
 </div>
 <div class="flag-toggle">标记模式：<button id="flagBtn">长按标记(关)</button></div>
 <div class="rank-area">
@@ -51,7 +61,7 @@ body{background:#0d1117;color:#fff;font-family:"JetBrains Mono",Menlo,Consolas,m
     <button id="showRank" disabled>排行榜</button>
 </div>
 <div id="board"></div>
-<div class="back"><a href="/">← back to terminal</a></div>
+<div class="back"><a href="/">← 返回游戏列表</a> · <a href="https://mujiu.net">mujiu.net</a></div>
 <script>
 const boardEl=document.getElementById('board'),scoreEl=document.getElementById('score');
 const bestEl=document.getElementById('localBest'),diffSel=document.getElementById('diff');
@@ -125,7 +135,7 @@ function reveal(r,c){
   // 非雷格：基础分实时累计
   revealedCount++;
   if(cell.near>0){
-    d.textContent=cell.near;d.style.color=['','#6cf','#4f4','#f44','#a0f','#f90','#0ff','#fff','#ff9'][cell.near];
+    d.textContent=cell.near;d.style.color=['','#60a5fa','#35a87c','#FF9D00','#b388ff','#f87171','#22d3ee','#e9e9e9','#FFD166'][cell.near];
   }else{
     for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)if(i||j)reveal(r+i,c+j);
   }
