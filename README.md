@@ -13,6 +13,16 @@
 - `Tab` 补全（内置命令 + 游戏名），`↑` / `↓` 翻历史命令
 - 页面上点击任意位置都会自动聚焦输入框
 
+## 主题
+
+6 套主题（`dark` / `light` / `blue-matrix` / `espresso` / `green-goblin` / `ubuntu`），
+顶栏色点切换，选择存在 cookie `mujiu_theme`（`domain=.mujiu.net`），
+与主站、gui 主页、留言箱共用 —— 任意一站换主题，其余站自动跟随。
+
+- 配色令牌真源：根目录 `theme.css`（`:root` 为默认深色 + `[data-theme="..."]` 覆盖）
+- 切换逻辑与色点：根目录 `theme.js`，各页在 `<head>` 里**同步**引入（避免刷新时闪主题）
+- 留言箱 `ask.mujiu.net` 用 nginx `alias` 复用这两个文件，改一处两站生效
+
 ## 游戏清单
 
 | 目录 | 名称 |

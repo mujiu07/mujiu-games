@@ -19,6 +19,7 @@
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.16);
   --danger: #f87171;
+  --scan: rgba(255, 255, 255, 0.014);
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
 }
@@ -62,7 +63,7 @@ body::after {
   z-index: 9999;
   background: repeating-linear-gradient(
     0deg,
-    rgba(255, 255, 255, 0.014) 0 1px,
+    var(--scan) 0 1px,
     transparent 1px 2px
   );
   opacity: 0.5;
@@ -258,4 +259,129 @@ a:hover {
 .mj-top .sp {
   display: flex;
   gap: 14px;
+}
+
+/* ==========================================================================
+   6 套主题（与主站 / gui 主页同名同色，2026-09-24 新增）
+   —— /theme.js 读取 cookie mujiu_theme，把主题名写到 <html data-theme="...">；
+      "dark" 就是上面的 :root 默认值，不重复定义。
+      只覆盖设计令牌，换主题时所有组件自动跟随。
+      与 gui 的唯一偏差：espresso 的 --text-300 由 #5b5b5b 提亮到 #8f8f8f，
+      否则在 #323232 底色上分数/说明文字读不清。
+   ========================================================================== */
+[data-theme="light"] {
+  --body: #eff3f3;
+  --body-2: #e4eaea;
+  --panel: #e2e8e8;
+  --card: #e2e8e8;
+  --primary: #027474;
+  --secondary: #ff9d00;
+  --text-100: #334155;
+  --text-200: #475569;
+  --text-300: #64748b;
+  --line: rgba(4, 26, 26, 0.14);
+  --line-strong: rgba(4, 26, 26, 0.26);
+  --danger: #c0392b;
+  --scan: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="blue-matrix"] {
+  --body: #101116;
+  --body-2: #070810;
+  --panel: #0b1720;
+  --card: #0b1720;
+  --primary: #00ff9c;
+  --secondary: #60fdff;
+  --text-100: #ffffff;
+  --text-200: #c7c7c7;
+  --text-300: #76ff9f;
+  --line: rgba(0, 255, 156, 0.18);
+  --line-strong: rgba(0, 255, 156, 0.34);
+  --danger: #ff5f5f;
+}
+
+[data-theme="espresso"] {
+  --body: #323232;
+  --body-2: #2a2a2a;
+  --panel: #3d3d3d;
+  --card: #3d3d3d;
+  --primary: #e1e48b;
+  --secondary: #a5c260;
+  --text-100: #f7f7f7;
+  --text-200: #eeeeee;
+  --text-300: #8f8f8f;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --danger: #ff8a80;
+}
+
+[data-theme="green-goblin"] {
+  --body: #000000;
+  --body-2: #0a0a0a;
+  --panel: #0d0d0d;
+  --card: #0d0d0d;
+  --primary: #e5e500;
+  --secondary: #04a500;
+  --text-100: #01ff00;
+  --text-200: #04a5b2;
+  --text-300: #e50101;
+  --line: rgba(1, 255, 0, 0.2);
+  --line-strong: rgba(1, 255, 0, 0.36);
+  --danger: #ff3b3b;
+}
+
+[data-theme="ubuntu"] {
+  --body: #2d0922;
+  --body-2: #220618;
+  --panel: #3a1230;
+  --card: #3a1230;
+  --primary: #80d932;
+  --secondary: #80d932;
+  --text-100: #ffffff;
+  --text-200: #e1e9cc;
+  --text-300: #cdcdcd;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --danger: #ff7a7a;
+}
+
+/* ---------- 主题切换器（由 /theme.js 注入顶栏） ---------- */
+.mj-theme {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.mj-theme button {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 0;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mj-theme button:hover {
+  transform: scale(1.15);
+}
+
+.mj-theme button.active {
+  border-color: var(--text-100);
+}
+
+.mj-theme button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mj-theme button,
+  .mj-theme button:hover {
+    transition: none;
+    transform: none;
+  }
 }
